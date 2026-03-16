@@ -1,0 +1,19 @@
+<configure xmlns="http://namespaces.zope.org/zope" xmlns:plone="http://namespaces.plone.org/plone">
+
+    <plone:service
+        method="POST"
+        for="eea.genai.summary.behaviors.ILLMSummary"
+        factory=".post.LLMSummaryPost"
+        name="@llm-summary"
+        permission="cmf.ModifyPortalContent"
+    />
+
+    <plone:service
+        method="POST"
+        for="Products.CMFCore.interfaces.ISiteRoot"
+        factory=".post.LLMSummaryBatchPost"
+        name="@llm-summary-batch"
+        permission="eea.genai.manage"
+    />
+
+</configure>

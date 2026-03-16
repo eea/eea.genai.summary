@@ -1,0 +1,15 @@
+<configure xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:five="http://namespaces.zope.org/five" i18n_domain="eea">
+
+    <five:registerPackage package="." initialize=".initialize" />
+
+    <genericsetup:registerProfile
+        name="default"
+        title="eea.genai.summary"
+        directory="profiles/default"
+        description="Installs the eea.genai.summary add-on."
+        provides="Products.GenericSetup.interfaces.EXTENSION"
+    />
+
+</configure>

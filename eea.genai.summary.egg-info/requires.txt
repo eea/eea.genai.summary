@@ -1,0 +1,5 @@
+setuptools
+eea.genai.core
+
+[test]
+plone.app.testing

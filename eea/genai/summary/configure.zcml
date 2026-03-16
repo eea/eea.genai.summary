@@ -1,0 +1,40 @@
+<configure xmlns="http://namespaces.zope.org/zope"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    xmlns:genai="http://namespaces.eea.europa.eu/genai"
+    i18n_domain="eea">
+
+    <include package="eea.genai.core" />
+    <include package="eea.genai.core" file="meta.zcml" />
+
+    <include file="profiles.zcml" />
+
+    <include package=".restapi" />
+
+    <plone:behavior
+        name="eea.genai.summary"
+        title="LLM Summary"
+        description="Adds LLM-powered summary generation fields to content types."
+        provides="eea.genai.summary.behaviors.ILLMSummary"
+    />
+
+    <subscriber
+        for="eea.genai.summary.behaviors.ILLMSummary
+             zope.lifecycleevent.interfaces.IObjectModifiedEvent"
+        handler=".subscribers.on_content_modified"
+    />
+
+    <!-- Agent context providers -->
+
+    <genai:agentContextProvider
+        name="generic_metadata"
+        class=".context_providers.GenericMetadataProvider"
+    />
+
+    <!-- Default summarizer agent -->
+    <genai:agent
+        name="summarizer"
+        class=".agents.SummarizerAgent"
+    />
+
+</configure>
