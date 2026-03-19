@@ -60,4 +60,9 @@ def extract_metadata_prompt(context):
         else:
             parts.append(f"Temporal coverage: {temporal_coverage}")
 
+    llm_summary = getattr(context, "llm_summary", None)
+
+    if llm_summary:
+        parts.append(f"LLM summary: {llm_summary}")
+
     return parts
