@@ -3,6 +3,18 @@
 from eea.genai.core.interfaces import AgentContextProvider
 
 
+class _Source:
+    """Unified accessor: properties dict overrides context attributes."""
+    def __init__(self, context, properties):
+        self._context = context
+        self._properties = properties
+
+    def __getattr__(self, name):
+        if name in self._properties:
+            return self._properties[name]
+        return getattr(self._context, name, None)
+
+
 class GenericMetadataProvider(AgentContextProvider):
     """Extracts content metadata and adds it to the user prompt.
 
@@ -15,9 +27,11 @@ class GenericMetadataProvider(AgentContextProvider):
 
     def user_prompt(self, deps):
         context = getattr(deps, "context", None)
+        properties = getattr(deps, "properties", {})
         if context is None:
             return ""
-        parts = extract_metadata_prompt(context)
+        source = _Source(context, properties)
+        parts = extract_metadata_prompt(source)
         return "### Generic page metadata\n\n" + "\n".join(parts) if parts else ""
 
 
