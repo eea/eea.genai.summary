@@ -1,13 +1,13 @@
 """LLM summary generation endpoints"""
 
-import json
 import logging
 
 from plone import api
+from plone.restapi.deserializer import json_body
 from plone.restapi.services import Service
 
 from eea.genai.summary.behaviors import ILLMSummary
-from eea.genai.summary.subscribers import generate_summary_for
+from eea.genai.summary.generate import generate_summary_for
 
 logger = logging.getLogger("eea.genai.summary")
 
@@ -17,7 +17,11 @@ class LLMSummaryPost(Service):
 
     def reply(self):
         try:
-            fields = generate_summary_for(self.context, self.request)
+            body = json_body(self.request)
+            properties = body.get("properties", {})
+            fields = generate_summary_for(
+                self.context, self.request, properties=properties
+            )
             return {
                 "@id": self.context.absolute_url(),
                 "title": self.context.title,
@@ -37,13 +41,7 @@ class LLMSummaryBatchPost(Service):
     """POST @llm-summary-batch - generate LLM summaries for multiple objects"""
 
     def reply(self):
-        body = self.request.get("BODY", b"{}")
-        if isinstance(body, bytes):
-            try:
-                body = json.loads(body)
-            except (json.JSONDecodeError, ValueError):
-                body = {}
-
+        body = json_body(self.request)
         limit = body.get("limit", 10)
         offset = body.get("offset", 0)
         force = body.get("force", False)
@@ -87,9 +85,14 @@ class LLMSummaryBatchPost(Service):
                 continue
 
             try:
-                fields = generate_summary_for(obj, self.request)
+                result = generate_summary_for(obj, self.request)
+                if result:
+                    summary = result.get("llm_summary")
+                    if summary and summary.strip():
+                        obj.llm_summary = summary
+                        obj.reindexObject(idxs=["modified"])
                 entry["status"] = "success"
-                entry.update(fields)
+                entry.update(result)
                 processed += 1
             except Exception as e:
                 logger.warning(
