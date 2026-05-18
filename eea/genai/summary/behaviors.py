@@ -11,14 +11,14 @@ class ILLMSummary(model.Schema):
     """Behavior schema providing LLM summary fields."""
 
     allow_llm_summary = schema.Bool(
-        title="Allow LLM Summary",
-        description="Enable LLM-powered summary generation for this content",
+        title="Allow AI Summary",
+        description="Enable AI-powered summary generation for this content",
         required=False,
         default=True,
     )
 
     llm_summary = schema.Text(
-        title="LLM Summary",
-        description="LLM-generated accessibility and analytical summary",
+        title="AI Summary",
+        description="AI-generated accessibility and analytical summary",
         required=False,
     )
