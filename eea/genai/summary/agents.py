@@ -17,6 +17,7 @@ purpose, and scope of the content."""
 
 class SummarizerAgent(AgentConfiguration):
     """Content summarizer agent for the Plone website."""
+
     system_prompt = SYSTEM_PROMPT
     task_prompt = TASK_PROMPT
     context_providers = ["generic_metadata", "blocks"]

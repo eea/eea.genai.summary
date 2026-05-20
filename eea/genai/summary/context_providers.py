@@ -105,7 +105,9 @@ def extract_metadata_prompt(
             locations = geo_coverage.get("geolocation") or []
             labels = [loc["label"] for loc in locations if loc.get("label")]
             if group.get("label"):
-                parts.append(f"Geographic coverage: {group['label']} ({', '.join(labels)})")
+                parts.append(
+                    f"Geographic coverage: {group['label']} ({', '.join(labels)})"
+                )
             elif labels:
                 parts.append(f"Geographic coverage: {', '.join(labels)}")
         elif geo_coverage:
