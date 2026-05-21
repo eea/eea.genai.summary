@@ -92,9 +92,7 @@ class TestExtractMetadataPrompt(unittest.TestCase):
         self.assertFalse(any("Temporal coverage" in p for p in result))
 
     def test_llm_summary_excluded_by_default(self):
-        result = extract_metadata_prompt(
-            self._ctx(llm_summary="An existing summary")
-        )
+        result = extract_metadata_prompt(self._ctx(llm_summary="An existing summary"))
         self.assertFalse(any("LLM summary" in p for p in result))
 
     def test_llm_summary_included_when_flag_true(self):
