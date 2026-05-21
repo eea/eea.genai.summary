@@ -140,6 +140,9 @@ pipeline {
           script {
             checkout scm
             unstash 'coverage'
+            sh "ls -ltr coverage/*"
+            sh "ls -ltr coverage/junit-results/*"
+            sh "ls -ltr coverage/junit-results/testreports/*"
             junit 'coverage/junit-results/testreports/*.xml'
             def scannerHome = tool 'SonarQubeScanner';
             def nodeJS = tool 'NodeJS11';
