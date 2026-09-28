@@ -118,9 +118,9 @@ class TestBatchReplyStatus(unittest.TestCase):
 
         with patch("eea.genai.summary.restapi.post.api") as mock_api, patch(
             "eea.genai.summary.restapi.post.ensure_llm_summary_catalog_column"
-        ), patch("eea.genai.summary.restapi.post.generate_summary_for") as mock_gen, patch(
-            "eea.genai.summary.restapi.post.transaction"
-        ) as mock_tx:
+        ), patch(
+            "eea.genai.summary.restapi.post.generate_summary_for"
+        ) as mock_gen, patch("eea.genai.summary.restapi.post.transaction") as mock_tx:
             mock_api.portal.get_tool.return_value = Mock(return_value=brains)
             response = svc.reply()
             return response, mock_gen, mock_tx

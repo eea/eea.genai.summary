@@ -96,8 +96,7 @@ class ImageContentProvider(Enricher):
         if media_type not in SUPPORTED_MEDIA_TYPES:
             return ""
         lines = [
-            "An image is attached to this request. "
-            "Describe what is visible in it."
+            "An image is attached to this request. Describe what is visible in it."
         ]
         filename = getattr(image, "filename", None)
         content_type = getattr(image, "contentType", None)

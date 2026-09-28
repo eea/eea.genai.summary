@@ -44,9 +44,7 @@ class TestGenerateSummaryForMarkers(unittest.TestCase):
     @patch("eea.genai.summary.generate.get_agent_for_content_type")
     @patch("eea.genai.summary.generate.get_agent_config")
     @patch("eea.genai.summary.generate.get_executor")
-    def test_wraps_when_agent_requests_markers(
-        self, mock_exec, mock_cfg, mock_resolve
-    ):
+    def test_wraps_when_agent_requests_markers(self, mock_exec, mock_cfg, mock_resolve):
         mock_resolve.return_value = "summarizer:Image"
         mock_cfg.return_value = {"summary_markers": True}
         mock_exec.return_value.run_with_agent.return_value = "A red house."
@@ -96,9 +94,7 @@ class TestGenerateSummaryForLengthGuard(unittest.TestCase):
     @patch("eea.genai.summary.generate.get_agent_for_content_type")
     @patch("eea.genai.summary.generate.get_agent_config")
     @patch("eea.genai.summary.generate.get_executor")
-    def test_within_limit_no_retry(
-        self, mock_exec, mock_cfg, mock_resolve
-    ):
+    def test_within_limit_no_retry(self, mock_exec, mock_cfg, mock_resolve):
         mock_resolve.return_value = "summarizer:Image"
         mock_cfg.return_value = {"max_summary_length": 125}
         mock_exec.return_value.run_with_agent.return_value = "A red house."
@@ -111,9 +107,7 @@ class TestGenerateSummaryForLengthGuard(unittest.TestCase):
     @patch("eea.genai.summary.generate.get_agent_for_content_type")
     @patch("eea.genai.summary.generate.get_agent_config")
     @patch("eea.genai.summary.generate.get_executor")
-    def test_overshoot_adopts_shorter_retry(
-        self, mock_exec, mock_cfg, mock_resolve
-    ):
+    def test_overshoot_adopts_shorter_retry(self, mock_exec, mock_cfg, mock_resolve):
         mock_resolve.return_value = "summarizer:Image"
         mock_cfg.return_value = {"max_summary_length": 20}
         long_first = "A" * 50
@@ -151,9 +145,7 @@ class TestGenerateSummaryForLengthGuard(unittest.TestCase):
     @patch("eea.genai.summary.generate.get_agent_for_content_type")
     @patch("eea.genai.summary.generate.get_agent_config")
     @patch("eea.genai.summary.generate.get_executor")
-    def test_retry_empty_keeps_first_result(
-        self, mock_exec, mock_cfg, mock_resolve
-    ):
+    def test_retry_empty_keeps_first_result(self, mock_exec, mock_cfg, mock_resolve):
         """An empty retry must not discard a valid (if long) first result."""
         mock_resolve.return_value = "summarizer:Image"
         mock_cfg.return_value = {"max_summary_length": 20}
@@ -171,9 +163,7 @@ class TestGenerateSummaryForLengthGuard(unittest.TestCase):
     @patch("eea.genai.summary.generate.get_agent_for_content_type")
     @patch("eea.genai.summary.generate.get_agent_config")
     @patch("eea.genai.summary.generate.get_executor")
-    def test_retry_failure_keeps_first_result(
-        self, mock_exec, mock_cfg, mock_resolve
-    ):
+    def test_retry_failure_keeps_first_result(self, mock_exec, mock_cfg, mock_resolve):
         """A raising retry must not lose the first result or propagate."""
         mock_resolve.return_value = "summarizer:Image"
         mock_cfg.return_value = {"max_summary_length": 20}
@@ -204,9 +194,7 @@ class TestGenerateSummaryForLengthGuard(unittest.TestCase):
     @patch("eea.genai.summary.generate.get_agent_for_content_type")
     @patch("eea.genai.summary.generate.get_agent_config")
     @patch("eea.genai.summary.generate.get_executor")
-    def test_non_string_result_never_retries(
-        self, mock_exec, mock_cfg, mock_resolve
-    ):
+    def test_non_string_result_never_retries(self, mock_exec, mock_cfg, mock_resolve):
         mock_resolve.return_value = "summarizer:Image"
         mock_cfg.return_value = {"max_summary_length": 20}
         structured = object()

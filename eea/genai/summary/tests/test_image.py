@@ -60,9 +60,7 @@ class TestImageContentProviderParts(unittest.TestCase):
         self.assertEqual(self.provider.content_parts(_Deps(context=ctx)), [])
 
     def test_jpeg_returns_data_url_part(self):
-        ctx = SimpleNamespace(
-            image=_FakeImage(_make_jpeg(), filename="amenda.jpeg")
-        )
+        ctx = SimpleNamespace(image=_FakeImage(_make_jpeg(), filename="amenda.jpeg"))
         parts = self.provider.content_parts(_Deps(context=ctx))
         self.assertEqual(len(parts), 1)
         self.assertTrue(parts[0].url.startswith("data:image/jpeg;base64,"))
@@ -75,9 +73,7 @@ class TestImageContentProviderParts(unittest.TestCase):
         self.assertEqual(self.provider.content_parts(_Deps(context=ctx)), [])
 
     def test_user_prompt_describes_image(self):
-        ctx = SimpleNamespace(
-            image=_FakeImage(_make_jpeg(), filename="amenda.jpeg")
-        )
+        ctx = SimpleNamespace(image=_FakeImage(_make_jpeg(), filename="amenda.jpeg"))
         text = self.provider.user_prompt(_Deps(context=ctx))
         self.assertIn("amenda.jpeg", text)
         self.assertIn("image/jpeg", text)
