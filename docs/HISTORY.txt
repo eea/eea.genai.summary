@@ -3,6 +3,56 @@ Changelog
 
 1.1-dev0 - (unreleased)
 ---------------------------
+1.1 - (unreleased)
+---------------------------
+* Feature: multimodal image summarizer — new ``summarizer:Image`` agent
+  and ``image_content`` enricher attach the actual image bytes of Image
+  content to the LLM prompt; generated summaries are wrapped in
+  ``[AI Generated description] ... [End of AI Generated description]``
+  markers (issue #305021)
+* Change: image summaries are now short alt-text style — exactly one
+  sentence, max 125 characters (``max_summary_length``), with a single
+  retry when the model overshoots the limit (issue #305021)
+* Fix: the max_summary_length retry no longer discards a valid first
+  result — the retry is adopted only when it is a non-empty, shorter
+  string; an empty or failing retry keeps the first result, so a
+  verbose first answer can no longer be lost to an empty or failed
+  retry (issue #305021)
+* Fix: @llm-summary-batch commits each object individually (like
+  eea.plotly's summarize endpoint) — completed objects survive later
+  failures or client disconnects, and a per-object failure aborts only
+  its own partial writes. Failures are logged with a traceback
+  (issue #305021)
+* Feature: @llm-summary-batch validates limit/offset (400 on invalid
+  values, limit capped at 50), reports a run_id, overall status
+  (success/partial/error), per-object durations, explicit counts
+  (succeeded/skipped/empty/errors) and a hint when zero objects match
+  (e.g. a case-sensitive portal_type typo); total/processed/results
+  keys are kept for backward compatibility (issue #305021)
+* Fix: auto-generate on content creation too — the REST/Volto upload
+  path fires ObjectCreatedEvent, not ObjectModifiedEvent, so uploads
+  never triggered the summary subscriber. The created-event handler
+  only fires when the object carries actual image data at creation
+  (Image uploads); other ILLMSummary types keep generating on first
+  save
+* Fix: @llm-summary and @llm-summary-batch requests now exempt from
+  plone.protect CSRF checks (matching plone.restapi content services);
+  without this, batch writes were silently rolled back after the LLM
+  calls. Batch now reports "empty" when the model produces no summary
+  instead of a misleading "success"
+* Performance: the image_content enricher no longer reads the full
+  image blob in user_prompt(); presence is checked via getSize()
+* Feature: llm_summary is exposed as a portal_catalog metadata column
+  so the Volto object browser brains (metadata_fields=_all) carry the
+  AI summary natively — the image block no longer needs a second REST
+  fetch. The column is ensured idempotently on the summary write paths
+  (auto-generation subscriber, batch endpoint) and via the package's
+  GenericSetup catalog.xml; it is a metadata column only (no index),
+  so site search behavior is unaffected (issue #305021)
+* Add an uninstall profile (handler-only, no cleanup required) so the
+  add-on control panel can uninstall the package without warning about
+  a missing uninstall profile (issue #305021)
+  [razvanMiu refs #305021]
 
 1.0 - (2026-05-21)
 ---------------------------

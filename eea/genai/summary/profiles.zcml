@@ -12,4 +12,18 @@
         provides="Products.GenericSetup.interfaces.EXTENSION"
     />
 
+    <genericsetup:registerProfile
+        name="uninstall"
+        title="eea.genai.summary (uninstall)"
+        directory="profiles/uninstall"
+        description="Uninstalls the eea.genai.summary add-on."
+        provides="Products.GenericSetup.interfaces.EXTENSION"
+        post_handler=".setuphandlers.uninstall"
+    />
+
+    <utility
+        factory=".setuphandlers.HiddenProfiles"
+        name="eea.genai.summary-hiddenprofiles"
+    />
+
 </configure>

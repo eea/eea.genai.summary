@@ -24,6 +24,18 @@
         handler=".subscribers.on_content_modified"
     />
 
+    <!-- Creation: the REST/Volto upload path fires ObjectCreatedEvent (not
+         ObjectModifiedEvent), so auto-generation also subscribes to create.
+         The created handler only fires when the object carries actual image
+         data at creation (Image uploads); the handler is idempotent, so a
+         second event in the same request sees the already-set llm_summary
+         and returns. -->
+    <subscriber
+        for="eea.genai.summary.behaviors.ILLMSummary
+             zope.lifecycleevent.interfaces.IObjectCreatedEvent"
+        handler=".subscribers.on_content_created"
+    />
+
     <!-- Agent context providers -->
 
     <genai:agentContextProvider
@@ -36,10 +48,22 @@
         class=".context_providers.GenericMetadataNoDatesProvider"
     />
 
+    <!-- Multimodal: attaches the image bytes of Image content to the prompt -->
+    <genai:agentContextProvider
+        name="image_content"
+        class=".image.ImageContentProvider"
+    />
+
     <!-- Default summarizer agent -->
     <genai:agent
         name="summarizer"
         class=".agents.SummarizerAgent"
+    />
+
+    <!-- Content-type-specific multimodal summarizer for Image -->
+    <genai:agent
+        name="summarizer:Image"
+        class=".agents.ImageSummarizerAgent"
     />
 
 </configure>

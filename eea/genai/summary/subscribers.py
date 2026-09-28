@@ -5,6 +5,7 @@ import logging
 from zope.globalrequest import getRequest
 
 from eea.genai.core.agent import AgentDeps as CoreAgentDeps
+from eea.genai.summary.catalog import ensure_llm_summary_catalog_column
 from eea.genai.summary.generate import generate_summary_for
 
 logger = logging.getLogger("eea.genai.summary")
@@ -50,6 +51,7 @@ def on_content_modified(obj, event):
         # would rather keep what we have than wipe the field.
         if summary and summary.strip():
             obj.llm_summary = summary
+            ensure_llm_summary_catalog_column(obj)
             obj.reindexObject(idxs=["modified"])
     except Exception as e:
         logger.warning(
@@ -57,3 +59,33 @@ def on_content_modified(obj, event):
             obj.absolute_url(),
             str(e),
         )
+
+
+def on_content_created(obj, event):
+    """Auto-generate summary at creation time — Image content only.
+
+    The REST/Volto upload path fires ObjectCreatedEvent (not
+    ObjectModifiedEvent), so an uploaded image would never be summarized
+    without this subscriber. Generation is gated on the object carrying
+    actual image data at creation: other ILLMSummary content types are
+    expected to be created empty and filled in later, and their first
+    save (IObjectModifiedEvent) triggers generation instead. Generating
+    at create time for an empty object would burn an LLM call on
+    metadata only and then suppress the later, meaningful generation.
+    """
+    image = getattr(obj, "image", None)
+    if image is None:
+        return
+    size_fn = getattr(image, "getSize", None)
+    if callable(size_fn):
+        try:
+            if not size_fn():
+                return
+        except Exception:
+            return
+    else:
+        # No cheap size accessor (e.g. test doubles) — fall back to a data
+        # check so the gate stays meaningful.
+        if getattr(image, "data", None) is None:
+            return
+    on_content_modified(obj, event)
