@@ -75,10 +75,12 @@ retry budget.
 The section is contributed through a named ``IGenAISettingsSection`` utility
 in ``configure.zcml``. Its records are installed by this package's
 ``registry.xml`` using the core settings prefix. On existing sites, the owner
-must import the registry step from ``profile-eea.genai.summary:default`` after
+must run the ``eea.genai.summary`` profile upgrade from 1.0 to 2.0 after
 deploying/restarting the backend, before using the extended controlpanel.
-No upgrade steps or profile version changes are provided. Missing Image
-records use safe runtime defaults and do not enable generation.
+The upgrade imports only the registry step, without purging records or running
+import dependencies. It preserves existing settings and is safe to repeat.
+No ``eea.genai.core`` upgrade or legacy Image behavior cleanup is included.
+Missing Image records use safe runtime defaults and do not enable generation.
 
 The theme loads allowlisted flags from ``@genai-settings`` during SSR into
 ``state.reduxAsyncConnect.genAISettings``, just like header settings. Changes

@@ -32,6 +32,9 @@ Current checkpoint:
 - [x] The owner authorized work on the remaining defects and emphasized that
   both metadata and alt generation must show a loader inside their modal.
 - [x] No commit has been authorized or created by the agent.
+- [x] Owner authorized a summary-only registry upgrade for the new Image AI
+  settings, superseding the prior no-upgrades restriction only for this purpose.
+  Legacy Image behavior cleanup remains excluded. See PAUSE 12.
 
 Continuation rules:
 
@@ -716,6 +719,74 @@ Template for later entries:
 - No upgrades, profile version bumps, live-site changes, process restarts or
   commits were performed. Next authorized batch: none beyond completed work;
   deployment and live verification require owner approval.
+
+### Summary-only Image settings upgrade / PAUSE 12 — 2026-10-14 EEST
+
+- Owner approval: explicitly authorized adding the missing-record upgrade and
+  confirmed it belongs only in `eea.genai.summary`, not `eea.genai.core`.
+  This supersedes the earlier no-upgrades restriction **only** for installing
+  Image AI registry records. It does not authorize legacy Image FTI cleanup,
+  commits, process changes, or execution of an upgrade on the running site.
+- Baseline changed since PAUSE 11: owner committed the previous implementation.
+  Summary was clean at `025b386fe7395ddbb0a355b7457cf156114833c4`; core was clean
+  at `ad5a1fde20727ca21257c39c0d832d17d7108fad`. Both HEADs remain unchanged during
+  this upgrade task. There were no pre-existing dirty summary paths to preserve.
+  Core remains completely clean; frontend and policy repositories were untouched.
+- Implemented a GenericSetup summary profile **1.0 → 2.0** upgrade named
+  “Install Image AI settings”. Handler imports only `plone.app.registry` from
+  `profile-eea.genai.summary:default`, explicitly setting `run_dependencies=False`
+  and `purge_old=False`. Existing `registry.xml` registers the package-owned schema
+  under the shared prefix without value overrides, preserving valid configured
+  values and filling missing records. No core upgrade is required because core's
+  existing registry fields and keys are unchanged.
+- Complete dirty paths, all owned by this task, within `eea.genai.summary`:
+  - `M README.rst`;
+  - `M docs/HISTORY.txt`;
+  - `M docs/IMAGE_METADATA_UPLOAD_PLAN.md`;
+  - `M eea/genai/summary/configure.zcml`;
+  - `M eea/genai/summary/profiles/default/metadata.xml`;
+  - `?? eea/genai/summary/tests/test_upgrades.py`;
+  - `?? eea/genai/summary/upgrades/__init__.py`;
+  - `?? eea/genai/summary/upgrades/configure.zcml`.
+- Verification:
+  - dependency-free red/green wiring harness:
+    `python3 /tmp/test-summary-upgrade-contract.py` initially failed with one
+    missing-handler error and one missing-include assertion, then passed both
+    tests after implementation. This was a narrow wiring check, not a substitute
+    for Plone verification;
+  - the backend environment initially could not import `zope`, later could load
+    Plone but lacked `pydantic`/`pydantic_ai` and editable package discovery. No
+    dependency installation was performed by the agent. The environment became
+    available again during this task, and verification was completed;
+  - from `eea.genai.summary`, with explicit source paths:
+    `PYTHONPATH="$PWD:$PWD/../eea.genai.core${PYTHONPATH:+:$PYTHONPATH}" ../../bin/zope-testrunner --test-path=. -s eea.genai.summary -m test_upgrades --no-color --no-progress`:
+    **6 passed**, zero failures/errors/skips. Covers actual registry import,
+    disabled/64/500 defaults, preservation of core and Image settings,
+    idempotence, partial-record repair, the composed proxy's original missing
+    `image_ai_enabled` error before upgrade and successful access after upgrade,
+    profile-version/include consistency, and actual executable ZCML registration
+    in isolated GenericSetup upgrade storage;
+  - same command without `-m test_upgrades`: full summary package
+    **140 passed**, zero failures/errors/skips;
+  - `ruff check eea.genai.summary/eea/genai/summary` and
+    `ruff format --check eea.genai.summary/eea/genai/summary`: passed,
+    **27 Python files**;
+  - tracked and untracked whitespace checks passed. Core status remains clean.
+- Independent fresh-context reviewer: **APPROVE, no issues found**, run
+  `8f2b3583-fc43-46d1-9153-a6671a9c208e`, artifact
+  `/tmp/genai-summary-registry-upgrade-review.md`. Its initial runtime-blocker
+  notes were subsequently resolved by the parent with the focused/full passing
+  runs above. A test-only executable ZCML check was added after review; no
+  production code was changed after that review.
+- Evidence: `/tmp/genai-summary-upgrade-{focused,full}.log`,
+  `/tmp/genai-summary-upgrade-unittest.log`,
+  `/tmp/genai-summary-registry-upgrade-review.diff`.
+- Remaining owner action: deploy/restart and run the summary profile upgrade
+  **1.0 → 2.0**, then reload the GenAI controlpanel. This replaces PAUSE 11's
+  manual registry-import workaround; no core profile upgrade is needed.
+- No running-site mutation, process restart, dependency installation, or commit
+  was performed. Next authorized batch: none beyond the completed summary
+  upgrade; live execution requires owner approval.
 
 ## Repository scope and baseline
 

@@ -8,6 +8,7 @@
     <include package="eea.genai.core" file="meta.zcml" />
 
     <include file="profiles.zcml" />
+    <include package=".upgrades" />
 
     <include package=".restapi" />
 
