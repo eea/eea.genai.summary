@@ -3,6 +3,8 @@ Generate LLM summaries for Plone content objects using pydantic-ai agents.
 """
 
 import logging
+import re
+import unicodedata
 
 from eea.genai.core.agent import AgentDeps
 from eea.genai.core.errors import AgentConfigInvalid
@@ -11,6 +13,12 @@ from eea.genai.core.settings import (
     get_agent_for_content_type,
 )
 from eea.genai.core.utils import get_executor
+from eea.genai.summary.image import (
+    TransientImageContext,
+    context_from_existing_image,
+)
+from eea.genai.summary.models import ImageAltResult, ImageMetadataResult
+from eea.genai.summary.settings import get_image_ai_limits, require_image_ai_enabled
 
 logger = logging.getLogger("eea.genai.summary")
 
@@ -111,3 +119,96 @@ def generate_summary_for(obj, request, properties=None):
     if agent_config.get("summary_markers") and isinstance(result, str):
         result = wrap_with_ai_markers(result)
     return {"llm_summary": result}
+
+
+def _validated_result(result, model_type):
+    if isinstance(result, model_type):
+        return result
+    return model_type.model_validate(result)
+
+
+def _normalized_filename_title(value):
+    value = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    return " ".join(re.sub(r"[\W_]+", " ", value).split())
+
+
+def _title_duplicates_filename(title, filename):
+    filename = str(filename or "").rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    stem = filename.rsplit(".", 1)[0] if "." in filename else filename
+    normalized_title = _normalized_filename_title(title)
+    return bool(
+        normalized_title
+        and normalized_title
+        in {
+            _normalized_filename_title(filename),
+            _normalized_filename_title(stem),
+        }
+    )
+
+
+def generate_image_metadata(image, request, *, language="en"):
+    """Generate validated metadata for a verified, unpersisted image.
+
+    Retry once for an oversized result or a filename-derived title. Never
+    truncate text. Both fields are regenerated together so metadata is atomic.
+    """
+    require_image_ai_enabled()
+    title_limit, description_limit = get_image_ai_limits()
+    context = TransientImageContext(image=image, language=language)
+    executor = get_executor()
+    retry_instruction = ""
+    for attempt in range(2):
+        result = executor.run_with_agent(
+            "image_metadata",
+            user_prompt=(
+                f"Output language code: {language}. Title: at most {title_limit} "
+                f"characters. Description: at most {description_limit} characters."
+                f"{retry_instruction}"
+            ),
+            deps=AgentDeps(context=context, request=request),
+        )
+        validated = _validated_result(result, ImageMetadataResult)
+        if (
+            len(validated.title) > title_limit
+            or len(validated.description) > description_limit
+        ):
+            retry_instruction = (
+                " The previous result exceeded the character limits; shorten it "
+                "while preserving factual content and complete sentences."
+            )
+        elif _title_duplicates_filename(validated.title, image.filename):
+            retry_instruction = (
+                " The previous title duplicated the upload filename; replace it "
+                "with a factual phrase based only on visible content."
+            )
+        else:
+            return validated.model_dump()
+    raise ValueError("Image metadata remains invalid after one retry")
+
+
+def generate_image_alt(context, request, *, language="en"):
+    """Generate a bounded alt suggestion, retrying once without truncation."""
+    require_image_ai_enabled()
+    alt_limit, _ = get_image_ai_limits()
+    transient_context = context_from_existing_image(context)
+    transient_context.language = language
+    executor = get_executor()
+    for attempt in range(2):
+        retry_instruction = (
+            " The previous alt exceeded the character limit; shorten it while "
+            "preserving factual content and a complete sentence."
+            if attempt
+            else ""
+        )
+        result = executor.run_with_agent(
+            "image_alt",
+            user_prompt=(
+                f"Output language code: {language}. Alt: at most {alt_limit} "
+                f"characters.{retry_instruction}"
+            ),
+            deps=AgentDeps(context=transient_context, request=request),
+        )
+        validated = _validated_result(result, ImageAltResult)
+        if len(validated.alt) <= alt_limit:
+            return validated.model_dump()
+    raise ValueError("Image alt exceeds its character limit after one retry")

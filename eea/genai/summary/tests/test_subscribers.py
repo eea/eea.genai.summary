@@ -4,7 +4,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from eea.genai.summary.subscribers import on_content_created, on_content_modified
+from eea.genai.summary.subscribers import on_content_modified
 
 
 def _obj(llm_summary=None, allow=True, image=None):
@@ -49,34 +49,3 @@ class TestOnContentModified(unittest.TestCase):
         obj = _obj(llm_summary=None)
         on_content_modified(obj, None)
         self.assertIsNone(obj.llm_summary)
-
-
-class TestOnContentCreatedGate(unittest.TestCase):
-    """The created-event handler must only fire for objects that carry
-    actual image data at creation time."""
-
-    @patch("eea.genai.summary.subscribers.on_content_modified")
-    def test_no_image_field_skips(self, mock_mod):
-        on_content_created(SimpleNamespace(image=None), None)
-        mock_mod.assert_not_called()
-
-    @patch("eea.genai.summary.subscribers.on_content_modified")
-    def test_empty_image_skips(self, mock_mod):
-        obj = _obj(image=SimpleNamespace(getSize=lambda: 0))
-        on_content_created(obj, None)
-        mock_mod.assert_not_called()
-
-    @patch("eea.genai.summary.subscribers.on_content_modified")
-    def test_image_with_data_delegates(self, mock_mod):
-        obj = _obj(image=SimpleNamespace(getSize=lambda: 1234))
-        on_content_created(obj, None)
-        mock_mod.assert_called_once_with(obj, None)
-
-    @patch("eea.genai.summary.subscribers.on_content_modified")
-    def test_size_accessor_error_skips(self, mock_mod):
-        def _boom():
-            raise RuntimeError("blob gone")
-
-        obj = _obj(image=SimpleNamespace(getSize=_boom))
-        on_content_created(obj, None)
-        mock_mod.assert_not_called()

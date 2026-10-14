@@ -7,6 +7,7 @@ from unittest.mock import patch
 from eea.genai.summary.generate import (
     SUMMARY_MARKER_END,
     SUMMARY_MARKER_START,
+    generate_image_metadata,
     generate_summary_for,
     wrap_with_ai_markers,
 )
@@ -83,6 +84,57 @@ class TestGenerateSummaryForMarkers(unittest.TestCase):
         result = generate_summary_for(self._obj(), request=None)
 
         self.assertIs(result["llm_summary"], structured)
+
+
+class TestGenerateImageMetadata(unittest.TestCase):
+    def setUp(self):
+        enabled = patch(
+            "eea.genai.summary.settings.is_image_ai_enabled", return_value=True
+        )
+        enabled.start()
+        self.addCleanup(enabled.stop)
+
+    @patch("eea.genai.summary.generate.get_executor")
+    def test_retries_atomic_metadata_when_title_duplicates_filename(self, mock_exec):
+        mock_exec.return_value.run_with_agent.side_effect = [
+            {
+                "title": "IMG 1234",
+                "description": "A first description.",
+            },
+            {
+                "title": "Grey heron among wetland reeds",
+                "description": "A grey heron stands in shallow water.",
+            },
+        ]
+        image = SimpleNamespace(filename="IMG_1234.jpg")
+
+        result = generate_image_metadata(image, request=None, language="en")
+
+        self.assertEqual(result["title"], "Grey heron among wetland reeds")
+        self.assertEqual(
+            result["description"],
+            "A grey heron stands in shallow water.",
+        )
+        self.assertEqual(mock_exec.return_value.run_with_agent.call_count, 2)
+
+    @patch("eea.genai.summary.generate.get_executor")
+    def test_rejects_metadata_when_retry_still_duplicates_filename(self, mock_exec):
+        mock_exec.return_value.run_with_agent.side_effect = [
+            {
+                "title": "wetland-bird.png",
+                "description": "A first description.",
+            },
+            {
+                "title": "Wetland bird",
+                "description": "A second description.",
+            },
+        ]
+        image = SimpleNamespace(filename="wetland-bird.png")
+
+        with self.assertRaises(ValueError):
+            generate_image_metadata(image, request=None, language="en")
+
+        self.assertEqual(mock_exec.return_value.run_with_agent.call_count, 2)
 
 
 class TestGenerateSummaryForLengthGuard(unittest.TestCase):

@@ -12,7 +12,6 @@ from plone.restapi.services import Service
 from zope.interface import alsoProvides
 
 from eea.genai.summary.behaviors import ILLMSummary
-from eea.genai.summary.catalog import ensure_llm_summary_catalog_column
 from eea.genai.summary.generate import generate_summary_for
 
 logger = logging.getLogger("eea.genai.summary")
@@ -152,7 +151,6 @@ class LLMSummaryBatchPost(Service):
                     summary = (result or {}).get("llm_summary")
                     if summary and summary.strip():
                         obj.llm_summary = summary
-                        ensure_llm_summary_catalog_column(obj)
                         obj.reindexObject(idxs=["modified"])
                         transaction.commit()
                         entry["status"] = "success"

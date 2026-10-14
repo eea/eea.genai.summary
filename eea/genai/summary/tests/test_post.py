@@ -116,11 +116,11 @@ class TestBatchReplyStatus(unittest.TestCase):
         )
         brains = [SimpleNamespace(getObject=lambda o=o: o) for o in objects]
 
-        with patch("eea.genai.summary.restapi.post.api") as mock_api, patch(
-            "eea.genai.summary.restapi.post.ensure_llm_summary_catalog_column"
-        ), patch(
-            "eea.genai.summary.restapi.post.generate_summary_for"
-        ) as mock_gen, patch("eea.genai.summary.restapi.post.transaction") as mock_tx:
+        with (
+            patch("eea.genai.summary.restapi.post.api") as mock_api,
+            patch("eea.genai.summary.restapi.post.generate_summary_for") as mock_gen,
+            patch("eea.genai.summary.restapi.post.transaction") as mock_tx,
+        ):
             mock_api.portal.get_tool.return_value = Mock(return_value=brains)
             response = svc.reply()
             return response, mock_gen, mock_tx
@@ -141,12 +141,14 @@ class TestBatchReplyStatus(unittest.TestCase):
             response=SimpleNamespace(setStatus=Mock()),
         )
         brains = [SimpleNamespace(getObject=lambda o=o: o) for o in objs]
-        with patch("eea.genai.summary.restapi.post.api") as mock_api, patch(
-            "eea.genai.summary.restapi.post.ensure_llm_summary_catalog_column"
-        ), patch(
-            "eea.genai.summary.restapi.post.generate_summary_for",
-            mock_gen,
-        ), patch("eea.genai.summary.restapi.post.transaction") as mock_tx:
+        with (
+            patch("eea.genai.summary.restapi.post.api") as mock_api,
+            patch(
+                "eea.genai.summary.restapi.post.generate_summary_for",
+                mock_gen,
+            ),
+            patch("eea.genai.summary.restapi.post.transaction") as mock_tx,
+        ):
             mock_api.portal.get_tool.return_value = Mock(return_value=brains)
             response = svc.reply()
 
@@ -169,12 +171,14 @@ class TestBatchReplyStatus(unittest.TestCase):
             response=SimpleNamespace(setStatus=Mock()),
         )
         brains = [SimpleNamespace(getObject=lambda o=o: o) for o in objs]
-        with patch("eea.genai.summary.restapi.post.api") as mock_api, patch(
-            "eea.genai.summary.restapi.post.ensure_llm_summary_catalog_column"
-        ), patch(
-            "eea.genai.summary.restapi.post.generate_summary_for",
-            mock_gen,
-        ), patch("eea.genai.summary.restapi.post.transaction") as mock_tx:
+        with (
+            patch("eea.genai.summary.restapi.post.api") as mock_api,
+            patch(
+                "eea.genai.summary.restapi.post.generate_summary_for",
+                mock_gen,
+            ),
+            patch("eea.genai.summary.restapi.post.transaction") as mock_tx,
+        ):
             mock_api.portal.get_tool.return_value = Mock(return_value=brains)
             response = svc.reply()
 
@@ -218,12 +222,14 @@ class TestBatchReplyStatus(unittest.TestCase):
             response=SimpleNamespace(setStatus=Mock()),
         )
         brains = [SimpleNamespace(getObject=lambda o=o: o) for o in objs]
-        with patch("eea.genai.summary.restapi.post.api") as mock_api, patch(
-            "eea.genai.summary.restapi.post.ensure_llm_summary_catalog_column"
-        ), patch(
-            "eea.genai.summary.restapi.post.generate_summary_for",
-            mock_gen,
-        ), patch("eea.genai.summary.restapi.post.transaction") as mock_tx:
+        with (
+            patch("eea.genai.summary.restapi.post.api") as mock_api,
+            patch(
+                "eea.genai.summary.restapi.post.generate_summary_for",
+                mock_gen,
+            ),
+            patch("eea.genai.summary.restapi.post.transaction") as mock_tx,
+        ):
             mock_api.portal.get_tool.return_value = Mock(return_value=brains)
             response = svc.reply()
 

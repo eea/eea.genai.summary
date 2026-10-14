@@ -37,6 +37,53 @@ Main features
 7. ``@llm-summary-batch`` REST endpoint for batch generation.
 8. Default agent definitions shipped in ``agents.json`` —
    override via the control panel ``agents_json``.
+9. ``POST <container>/@image-metadata`` for validated, stateless metadata
+   generation before ordinary Image creation.
+10. ``POST <image>/@image-alt`` for a validated, non-persisting block-local
+    alt suggestion.
+
+Image APIs
+==========
+
+``@image-metadata`` accepts a base64 image payload plus a safe language code
+on a folderish container where the caller may add Images. It validates and
+bounds the image entirely in memory, calls a structured multimodal agent, and
+returns plain ``title`` and ``description`` values. It creates no content,
+blob, catalog record, or temporary file.
+
+``@image-alt`` is registered for the standard Plone ``IImage`` interface and
+requires Modify permission on the Image. It analyses verified Image bytes and
+metadata and returns plain ``alt`` text without changing the Image.
+
+Neither Image endpoint uses AI markers or depends on the ``ILLMSummary``
+behavior. Generic summary behavior remains opt-in and behavior-driven.
+
+Image AI is disabled by default. In the shared GenAI controlpanel, enable
+both the global GenAI switch and ``Enable Image AI features`` to allow Image
+metadata and alt generation. Disabled requests return HTTP 403 with the
+``image_ai_disabled`` error code; ordinary uploads and manual editing remain
+available.
+
+The Image AI section defines positive character limits: a shared title/alt
+maximum (default 64) and a description maximum (default 500). Limits apply to
+trimmed generated text, not manually edited metadata. They are supplied in
+prompts and enforced on returned values. Oversized output is retried once;
+if it still exceeds a limit, generation fails without truncation. Metadata
+fields are retried together; filename-derived titles share the same single
+retry budget.
+
+The section is contributed through a named ``IGenAISettingsSection`` utility
+in ``configure.zcml``. Its records are installed by this package's
+``registry.xml`` using the core settings prefix. On existing sites, the owner
+must import the registry step from ``profile-eea.genai.summary:default`` after
+deploying/restarting the backend, before using the extended controlpanel.
+No upgrade steps or profile version changes are provided. Missing Image
+records use safe runtime defaults and do not enable generation.
+
+The theme loads allowlisted flags from ``@genai-settings`` during SSR into
+``state.reduxAsyncConnect.genAISettings``, just like header settings. Changes
+take effect in frontend controls on the next full page load; generation
+requests always check current backend settings.
 
 Install
 =======
