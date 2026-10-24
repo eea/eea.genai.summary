@@ -21,7 +21,15 @@
         for="Products.CMFCore.interfaces.IFolderish"
         factory=".image.ImageMetadataPost"
         name="@image-metadata"
-        permission="plone.app.contenttypes.addImage"
+        permission="cmf.AddPortalContent"
+    />
+
+    <plone:service
+        method="POST"
+        for="plone.dexterity.interfaces.IDexterityContent"
+        factory=".image.ImageMetadataRegeneratePost"
+        name="@image-metadata-regenerate"
+        permission="cmf.ModifyPortalContent"
     />
 
     <plone:service

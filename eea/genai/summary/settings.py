@@ -15,6 +15,15 @@ def is_image_ai_enabled():
     )
 
 
+def is_image_ai_allowed(content_type):
+    """Return True when Image AI is allowed for the given content type.
+
+    The default allows Image only; an explicitly empty list allows every type.
+    """
+    allowed = get_settings_value(IImageAISettings, "image_ai_allowed_content_types")
+    return not allowed or content_type in allowed
+
+
 def require_image_ai_enabled():
     """Reject direct generation calls as well as REST requests when disabled."""
     if not is_image_ai_enabled():
@@ -38,4 +47,7 @@ class ImageAISettingsSection:
     def get_public_settings(self):
         return {
             "enabled": bool(get_settings_value(self.schema, "image_ai_enabled")),
+            "allowed_content_types": list(
+                get_settings_value(self.schema, "image_ai_allowed_content_types") or ()
+            ),
         }

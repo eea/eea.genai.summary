@@ -15,6 +15,7 @@ class IImageAISettings(model.Schema):
         label=_("Image AI"),
         fields=[
             "image_ai_enabled",
+            "image_ai_allowed_content_types",
             "image_title_alt_max_length",
             "image_description_max_length",
         ],
@@ -29,10 +30,23 @@ class IImageAISettings(model.Schema):
         default=False,
         required=False,
     )
+    image_ai_allowed_content_types = schema.Tuple(
+        title=_("Allowed content types"),
+        description=_(
+            "Restrict the Image AI features to these content types. "
+            "Leave empty to allow all content types."
+        ),
+        required=False,
+        default=("Image",),
+        missing_value=(),
+        value_type=schema.Choice(
+            source="plone.app.vocabularies.ReallyUserFriendlyTypes"
+        ),
+    )
     image_title_alt_max_length = schema.Int(
         title=_("Maximum Image title/alt length"),
         description=_("Maximum generated title or alt length in characters."),
-        default=64,
+        default=40,
         min=1,
         required=True,
     )

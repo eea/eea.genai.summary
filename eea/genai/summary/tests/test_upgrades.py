@@ -15,6 +15,8 @@ from plone.registry.fieldfactory import (
 from plone.registry.interfaces import IRegistry
 from zope.component import getGlobalSiteManager, provideAdapter
 from zope.component.testing import setUp, tearDown
+from zope.schema.vocabulary import SimpleVocabulary
+import zope.schema.vocabulary as zsv
 
 from eea.genai.core.interfaces import IGenAISettings
 from eea.genai.core.settings import GENAI_SETTINGS_PREFIX, get_controlpanel_schema
@@ -50,6 +52,15 @@ class TestImageAIRegistryUpgrade(unittest.TestCase):
         provideAdapter(choicePersistentFieldAdapter)
         self.registry = Registry()
         getGlobalSiteManager().registerUtility(self.registry, IRegistry)
+        # In production, plone.app.vocabularies provides the content type
+        # vocabulary via zope.componentvocabulary; stub it for binding here.
+        self._vocabulary_registry = zsv.getVocabularyRegistry()
+        zsv.setVocabularyRegistry(zsv.VocabularyRegistry())
+        zsv.getVocabularyRegistry().register(
+            "plone.app.vocabularies.ReallyUserFriendlyTypes",
+            lambda context: SimpleVocabulary.fromValues(["Document", "Image"]),
+        )
+        self.addCleanup(zsv.setVocabularyRegistry, self._vocabulary_registry)
         # Existing core settings must not be imported or reset by this upgrade.
         self.registry.registerInterface(IGenAISettings)
         self.registry[f"{GENAI_SETTINGS_PREFIX}.enabled"] = False
@@ -70,7 +81,8 @@ class TestImageAIRegistryUpgrade(unittest.TestCase):
             IImageAISettings, prefix=GENAI_SETTINGS_PREFIX
         )
         self.assertFalse(image.image_ai_enabled)
-        self.assertEqual(image.image_title_alt_max_length, 64)
+        self.assertEqual(image.image_ai_allowed_content_types, ("Image",))
+        self.assertEqual(image.image_title_alt_max_length, 40)
         self.assertEqual(image.image_description_max_length, 500)
         self.assertFalse(self.registry[f"{GENAI_SETTINGS_PREFIX}.enabled"])
         self.assertEqual(
@@ -91,6 +103,7 @@ class TestImageAIRegistryUpgrade(unittest.TestCase):
             IImageAISettings, prefix=GENAI_SETTINGS_PREFIX
         )
         image.image_ai_enabled = True
+        image.image_ai_allowed_content_types = ("Document", "Image")
         image.image_title_alt_max_length = 80
         image.image_description_max_length = 300
         before = {name: self.registry[name] for name in self.registry.records}
@@ -127,7 +140,7 @@ class TestImageAIRegistryUpgrade(unittest.TestCase):
         install_image_ai_settings(self.setup_tool)
         settings = self.registry.forInterface(schema, prefix=GENAI_SETTINGS_PREFIX)
         self.assertFalse(settings.image_ai_enabled)
-        self.assertEqual(settings.image_title_alt_max_length, 64)
+        self.assertEqual(settings.image_title_alt_max_length, 40)
 
 
 class TestUpgradeRegistration(unittest.TestCase):
@@ -143,16 +156,20 @@ class TestUpgradeRegistration(unittest.TestCase):
         with patch.object(upgrade, "_upgrade_registry", registry):
             context = xmlconfig.file("meta.zcml", GenericSetup)
             xmlconfig.file("configure.zcml", upgrades, context=context)
-            steps = list(registry.getUpgradeStepsForProfile(PROFILE).values())
-            self.assertEqual(len(steps), 1)
-            step = steps[0]
-            self.assertEqual(step.source, ("1", "0"))
-            self.assertEqual(step.dest, ("2", "0"))
-            self.assertIs(step.handler, install_image_ai_settings)
+            steps = registry.getUpgradeStepsForProfile(PROFILE)
+            by_range = {(step.source, step.dest): step for step in steps.values()}
+            self.assertEqual(
+                sorted(by_range),
+                [(("1", "0"), ("2", "0")), (("2", "0"), ("2", "1"))],
+            )
+            for step in by_range.values():
+                self.assertIs(step.handler, install_image_ai_settings)
             self.assertEqual(list(registry.keys()), ["eea.genai.summary:default"])
             setup_tool = Mock()
-            step.doStep(setup_tool)
-            setup_tool.runImportStepFromProfile.assert_called_once_with(
+            by_range[(("1", "0"), ("2", "0"))].doStep(setup_tool)
+            by_range[(("2", "0"), ("2", "1"))].doStep(setup_tool)
+            self.assertEqual(setup_tool.runImportStepFromProfile.call_count, 2)
+            setup_tool.runImportStepFromProfile.assert_called_with(
                 PROFILE, "plone.app.registry", run_dependencies=False, purge_old=False
             )
 
@@ -160,12 +177,16 @@ class TestUpgradeRegistration(unittest.TestCase):
         namespace = "{http://namespaces.zope.org/genericsetup}"
         root = ElementTree.parse(PACKAGE / "upgrades" / "configure.zcml").getroot()
         steps = root.findall(f"{namespace}upgradeStep")
-        self.assertEqual(len(steps), 1)
+        self.assertEqual(len(steps), 2)
         self.assertEqual(steps[0].get("profile"), "eea.genai.summary:default")
         self.assertEqual(steps[0].get("source"), "1.0")
         self.assertEqual(steps[0].get("destination"), "2.0")
         self.assertEqual(steps[0].get("handler"), ".install_image_ai_settings")
+        self.assertEqual(steps[1].get("profile"), "eea.genai.summary:default")
+        self.assertEqual(steps[1].get("source"), "2.0")
+        self.assertEqual(steps[1].get("destination"), "2.1")
+        self.assertEqual(steps[1].get("handler"), ".install_image_ai_settings")
         metadata = ElementTree.parse(PACKAGE / "profiles" / "default" / "metadata.xml")
-        self.assertEqual(metadata.findtext("version"), "2.0")
+        self.assertEqual(metadata.findtext("version"), "2.1")
         config = ElementTree.parse(PACKAGE / "configure.zcml").getroot()
         self.assertTrue(any(node.get("package") == ".upgrades" for node in config))

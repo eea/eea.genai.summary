@@ -41,21 +41,46 @@ Main features
    generation before ordinary Image creation.
 10. ``POST <image>/@image-alt`` for a validated, non-persisting block-local
     alt suggestion.
+11. ``POST <object>/@image-metadata-regenerate`` for validated, non-persisting
+    metadata suggestions when editing existing Dexterity content.
 
 Image APIs
 ==========
 
 ``@image-metadata`` accepts a base64 image payload plus a safe language code
-on a folderish container where the caller may add Images. It validates and
-bounds the image entirely in memory, calls a structured multimodal agent, and
-returns plain ``title`` and ``description`` values. It creates no content,
-blob, catalog record, or temporary file.
+on a folderish container. The optional ``portal_type`` identifies the content
+being added (default ``Image`` for existing callers), not its container.
+The caller must have the ordinary Add portal content permission, the requested
+FTI's construction permission, and satisfy local container type constraints.
+It validates and bounds the image entirely in memory, calls a structured
+multimodal agent, and returns plain ``title`` and ``description`` values.
+It creates no content, blob, catalog record, or temporary file.
 
 ``@image-alt`` is registered for the standard Plone ``IImage`` interface and
 requires Modify permission on the Image. It analyses verified Image bytes and
 metadata and returns plain ``alt`` text without changing the Image.
 
-Neither Image endpoint uses AI markers or depends on the ``ILLMSummary``
+``@image-metadata-regenerate`` requires View and Modify permissions on the
+existing object. It accepts ``field`` (the schema image field's name) and an
+optional ``language``. With no ``image`` payload it reads the stored field;
+a supplied base64 ``image`` takes precedence and is validated as an unsaved
+replacement, never persisted. Download descriptors and URLs are not fetched.
+The field must be an unambiguous named-image schema field; behavior-backed
+fields are adapted through their data manager. Source read permissions and
+title/description read/write permissions are checked, as are source write
+permissions for replacement uploads. The endpoint returns plain ``title``
+and ``description`` suggestions through the same generation pipeline as Add.
+
+The form widget supports both Add and Edit for the explicitly registered
+``image`` and ``preview_image`` fields. On Edit it uses the loaded object's
+content type, confirms replacement of existing metadata, and sends any unsaved
+replacement bytes instead of asking for the stored source. Stored regeneration
+changes only unsaved title/description; the file remains unchanged. Normal
+form Save persists edits; form cancellation discards them. Late results are
+ignored after source/context changes or cancellation, and metadata edited
+during analysis is preserved with an explicit retry message.
+
+None of the Image endpoints uses AI markers or depends on the ``ILLMSummary``
 behavior. Generic summary behavior remains opt-in and behavior-driven.
 
 Image AI is disabled by default. In the shared GenAI controlpanel, enable
@@ -64,8 +89,18 @@ metadata and alt generation. Disabled requests return HTTP 403 with the
 ``image_ai_disabled`` error code; ordinary uploads and manual editing remain
 available.
 
+``Allowed content types`` defaults to ``Image`` only. An explicitly empty
+list allows all types; it does not bypass permissions or add support for
+otherwise unsupported image sources. All Image endpoints enforce this policy and
+return HTTP 403 with ``image_ai_not_allowed`` for an excluded target type.
+Add metadata generation checks the requested new object's type; regeneration
+checks the existing object's actual type. Alt generation checks the linked
+Image's actual type, never a submitted type or the containing
+page's type. The public Image settings include ``allowed_content_types``;
+frontend controls fail closed when this policy is missing or failed to load.
+
 The Image AI section defines positive character limits: a shared title/alt
-maximum (default 64) and a description maximum (default 500). Limits apply to
+maximum (default 40) and a description maximum (default 500). Limits apply to
 trimmed generated text, not manually edited metadata. They are supplied in
 prompts and enforced on returned values. Oversized output is retried once;
 if it still exceeds a limit, generation fails without truncation. Metadata
@@ -75,8 +110,10 @@ retry budget.
 The section is contributed through a named ``IGenAISettingsSection`` utility
 in ``configure.zcml``. Its records are installed by this package's
 ``registry.xml`` using the core settings prefix. On existing sites, the owner
-must run the ``eea.genai.summary`` profile upgrade from 1.0 to 2.0 after
+must run the ``eea.genai.summary`` profile upgrades to 2.1 after
 deploying/restarting the backend, before using the extended controlpanel.
+The 1.0 to 2.0 step installs Image AI settings; the 2.0 to 2.1 step adds the
+content-type policy on sites that already have those settings.
 The upgrade imports only the registry step, without purging records or running
 import dependencies. It preserves existing settings and is safe to repeat.
 No ``eea.genai.core`` upgrade or legacy Image behavior cleanup is included.

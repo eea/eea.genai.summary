@@ -10,7 +10,6 @@ from xml.etree import ElementTree
 
 from PIL import Image as PILImage
 
-
 PLONE_NS = "http://namespaces.plone.org/plone"
 
 
@@ -54,12 +53,12 @@ def _services_by_name():
 
 
 class TestImageServiceRegistration(unittest.TestCase):
-    def test_image_metadata_uses_image_add_permission(self):
+    def test_image_metadata_uses_normal_content_add_permission(self):
         service = _services_by_name()["@image-metadata"]
 
         self.assertEqual(service["method"], "POST")
         self.assertEqual(service["factory"], ".image.ImageMetadataPost")
-        self.assertEqual(service["permission"], "plone.app.contenttypes.addImage")
+        self.assertEqual(service["permission"], "cmf.AddPortalContent")
 
     def test_image_alt_uses_modify_permission_and_image_context(self):
         service = _services_by_name()["@image-alt"]
@@ -71,6 +70,32 @@ class TestImageServiceRegistration(unittest.TestCase):
             service["for"],
             "plone.app.contenttypes.interfaces.IImage",
         )
+
+
+class TestImageAddability(unittest.TestCase):
+    def test_checks_requested_type_and_its_construction_permission(self):
+        from eea.genai.summary.restapi.image import is_image_addable
+
+        fti = Mock()
+        fti.getId.return_value = "Chart"
+        context = Mock()
+        context.allowedContentTypes.return_value = [fti]
+        fti.isConstructionAllowed.return_value = True
+        self.assertTrue(is_image_addable(context, "Chart"))
+        fti.isConstructionAllowed.assert_called_once_with(context)
+        self.assertFalse(is_image_addable(context, "Image"))
+        fti.isConstructionAllowed.return_value = False
+        self.assertFalse(is_image_addable(context, "Chart"))
+
+    def test_local_constraints_and_lookup_failures_deny_generation(self):
+        from eea.genai.summary.restapi.image import is_image_addable
+
+        context = Mock()
+        context.allowedContentTypes.return_value = []
+        self.assertFalse(is_image_addable(context, "Chart"))
+        context.allowedContentTypes.side_effect = RuntimeError("private detail")
+        self.assertFalse(is_image_addable(context, "Chart"))
+        self.assertFalse(is_image_addable(object(), "Chart"))
 
 
 class TestImageMetadataPost(unittest.TestCase):
@@ -101,6 +126,71 @@ class TestImageMetadataPost(unittest.TestCase):
         service.context = context or Mock()
         service.request = _request(payload or _metadata_payload())
         return service
+
+    def test_rejects_excluded_target_before_decoding_or_generation(self):
+        payload = _metadata_payload()
+        payload["portal_type"] = "Chart"
+        service = self._service(payload)
+        with (
+            patch("eea.genai.summary.restapi.image.decode_transient_image") as decode,
+            patch(
+                "eea.genai.summary.restapi.image.generate_image_metadata"
+            ) as generate,
+        ):
+            result = service.reply()
+        self.assertEqual(result["error"]["code"], "image_ai_not_allowed")
+        service.request.response.setStatus.assert_called_once_with(403)
+        decode.assert_not_called()
+        generate.assert_not_called()
+
+    def test_uses_requested_type_not_container_type_for_policy_and_addability(self):
+        payload = _metadata_payload()
+        payload["portal_type"] = "Chart"
+        service = self._service(payload, context=Mock(portal_type="Folder"))
+        with (
+            patch(
+                "eea.genai.summary.restapi.image.is_image_ai_allowed", return_value=True
+            ) as allowed,
+            patch(
+                "eea.genai.summary.restapi.image.is_image_addable", return_value=True
+            ) as addable,
+            patch(
+                "eea.genai.summary.restapi.image.generate_image_metadata",
+                return_value={"title": "Chart", "description": "A chart."},
+            ),
+        ):
+            self.assertEqual(service.reply()["title"], "Chart")
+        allowed.assert_called_once_with("Chart")
+        addable.assert_called_once_with(service.context, "Chart")
+
+    def test_allowlist_does_not_bypass_construction_permissions(self):
+        payload = _metadata_payload()
+        payload["portal_type"] = "Chart"
+        service = self._service(payload)
+        with (
+            patch(
+                "eea.genai.summary.restapi.image.is_image_ai_allowed", return_value=True
+            ),
+            patch(
+                "eea.genai.summary.restapi.image.is_image_addable", return_value=False
+            ),
+            patch(
+                "eea.genai.summary.restapi.image.generate_image_metadata"
+            ) as generate,
+        ):
+            result = service.reply()
+        self.assertEqual(result["error"]["code"], "image_not_addable")
+        generate.assert_not_called()
+
+    def test_rejects_malformed_target_type(self):
+        for portal_type in (None, "", [], {}, 123):
+            with self.subTest(portal_type=portal_type):
+                payload = _metadata_payload()
+                payload["portal_type"] = portal_type
+                service = self._service(payload)
+                result = service.reply()
+                self.assertEqual(result["error"]["code"], "invalid_request")
+                service.request.response.setStatus.assert_called_once_with(400)
 
     def test_rejects_container_that_disallows_images(self):
         service = self._service()
@@ -255,10 +345,23 @@ class TestImageAltPost(unittest.TestCase):
         service.request.response.setStatus.assert_called_once_with(403)
         generate.assert_not_called()
 
+    def test_rejects_excluded_linked_content_before_generation(self):
+        from eea.genai.summary.restapi.image import ImageAltPost
+
+        service = ImageAltPost()
+        service.context = Mock(portal_type="Chart")
+        service.request = _request({"language": "en", "portal_type": "Image"})
+        with patch("eea.genai.summary.restapi.image.generate_image_alt") as generate:
+            result = service.reply()
+        self.assertEqual(result["error"]["code"], "image_ai_not_allowed")
+        service.request.response.setStatus.assert_called_once_with(403)
+        generate.assert_not_called()
+
     def test_returns_plain_alt_without_mutating_image(self):
         from eea.genai.summary.restapi.image import ImageAltPost
 
         context = Mock(
+            portal_type="Image",
             title="Wetland bird",
             description="Original description",
             image=Mock(data=_png_bytes(), contentType="image/png"),
@@ -282,6 +385,7 @@ class TestImageAltPost(unittest.TestCase):
         from eea.genai.summary.restapi.image import ImageAltPost
 
         context = Mock(
+            portal_type="Image",
             title="Wetland bird",
             description="Original description",
             image=Mock(data=_png_bytes(), contentType="image/png"),

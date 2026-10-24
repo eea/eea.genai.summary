@@ -312,9 +312,13 @@ def decode_transient_image(payload) -> TransientImage:
     )
 
 
-def context_from_existing_image(context) -> TransientImageContext:
-    """Create a strict in-memory agent context from a persisted Image."""
-    image = getattr(context, "image", None)
+def transient_image_from_named_image(image) -> TransientImage:
+    """Strictly validate a stored named-image value without fetching any URL."""
+    size = getattr(image, "getSize", None)
+    if callable(size) and size() > MAX_IMAGE_BYTES:
+        raise ImageInputError(
+            "image_too_large", "The Image is too large to analyse.", status=413
+        )
     data = _read_image_data(image)
     media_type = (getattr(image, "contentType", "") or "").lower()
     if media_type not in SUPPORTED_MEDIA_TYPES:
@@ -332,12 +336,15 @@ def context_from_existing_image(context) -> TransientImageContext:
             status=413,
         )
     prepared, prepared_type = prepare_image_bytes(data, media_type, strict=True)
+    return TransientImage(
+        prepared, prepared_type, str(getattr(image, "filename", "image"))
+    )
+
+
+def context_from_existing_image(context) -> TransientImageContext:
+    """Create a strict in-memory agent context from a persisted Image."""
     return TransientImageContext(
-        image=TransientImage(
-            prepared,
-            prepared_type,
-            str(getattr(image, "filename", "image")),
-        ),
+        image=transient_image_from_named_image(getattr(context, "image", None)),
         title=str(getattr(context, "title", "") or ""),
         description=str(getattr(context, "description", "") or ""),
     )

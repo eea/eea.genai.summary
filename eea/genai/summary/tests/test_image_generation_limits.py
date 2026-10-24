@@ -23,11 +23,11 @@ class TestImageGenerationLimits(unittest.TestCase):
         self.addCleanup(context.stop)
         self.image = SimpleNamespace(filename="upload.jpg")
 
-    def test_shared_64_character_limit_retries_title_and_alt(self):
+    def test_shared_40_character_limit_retries_title_and_alt(self):
         self.executor.run_with_agent.side_effect = [
-            {"title": "x" * 65, "description": "A bird stands among reeds."},
+            {"title": "x" * 41, "description": "A bird stands among reeds."},
             {"title": "A heron", "description": "A bird stands among reeds."},
-            {"alt": "A " + "x" * 64 + "."},
+            {"alt": "A " + "x" * 40 + "."},
             {"alt": "A heron stands among reeds."},
         ]
         self.assertEqual(generate_image_metadata(self.image, None)["title"], "A heron")
@@ -36,7 +36,7 @@ class TestImageGenerationLimits(unittest.TestCase):
         )
         self.assertEqual(self.executor.run_with_agent.call_count, 4)
         for call in self.executor.run_with_agent.call_args_list:
-            self.assertIn("64 characters", call.kwargs["user_prompt"])
+            self.assertIn("40 characters", call.kwargs["user_prompt"])
 
     def test_description_limit_retries_both_fields_atomically(self):
         self.executor.run_with_agent.side_effect = [
@@ -53,7 +53,7 @@ class TestImageGenerationLimits(unittest.TestCase):
         )
 
     def test_second_oversized_result_fails_without_truncation(self):
-        self.executor.run_with_agent.return_value = {"alt": "A " + "x" * 64 + "."}
+        self.executor.run_with_agent.return_value = {"alt": "A " + "x" * 40 + "."}
         with self.assertRaises(ValueError):
             generate_image_alt(self.image, None)
         self.assertEqual(self.executor.run_with_agent.call_count, 2)
