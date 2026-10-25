@@ -3,17 +3,11 @@
 import logging
 import re
 
-from AccessControl import getSecurityManager
-from plone.autoform.interfaces import READ_PERMISSIONS_KEY, WRITE_PERMISSIONS_KEY
 from plone.dexterity.utils import iterSchemata
 from plone.namedfile.interfaces import INamedImageField
 from plone.restapi.deserializer import json_body
 from plone.restapi.services import Service
-from plone.supermodel.utils import mergedTaggedValueDict
-from z3c.form.interfaces import IDataManager
-from zope.component import queryMultiAdapter, queryUtility
 from zope.schema import getFields
-from zope.security.interfaces import IPermission
 
 from eea.genai.core.errors import AgentDisabled
 from eea.genai.summary.generate import (
@@ -136,45 +130,33 @@ class ImageMetadataPost(Service):
             )
 
 
-def _edit_field(context, schemata, name, *, write=False):
-    """Resolve a schema/behavior data manager and enforce field permissions."""
-    matches = []
-    for schema in schemata:
-        field = getFields(schema).get(name)
-        if field is not None and not any(field is found[1] for found in matches):
-            matches.append((schema, field))
-    if len(matches) != 1:
-        raise ImageInputError(
-            "invalid_request", "An unambiguous schema field is required."
-        )
-    schema, field = matches[0]
-    manager = queryMultiAdapter((context, field), IDataManager)
-    if manager is None or not manager.canAccess():
-        raise ImageInputError(
-            "image_not_editable", "The requested fields are not accessible.", status=403
-        )
-    if write and (field.readonly or not manager.canWrite()):
-        raise ImageInputError(
-            "image_not_editable", "The metadata fields are not writable.", status=403
-        )
-    keys = (
-        (READ_PERMISSIONS_KEY, WRITE_PERMISSIONS_KEY)
-        if write
-        else (READ_PERMISSIONS_KEY,)
-    )
-    for key in keys:
-        permission_id = mergedTaggedValueDict(schema, key).get(name)
-        if permission_id is not None:
-            permission = queryUtility(IPermission, name=permission_id)
-            if permission is None or not getSecurityManager().checkPermission(
-                permission.title, context
+def _get_named_image(context, name):
+    """Retrieve a named image from context or its behavior adapters."""
+    val = getattr(context, name, None)
+    if val is not None and (hasattr(val, "data") or hasattr(val, "contentType")):
+        return val
+    for schema in iterSchemata(context):
+        try:
+            adapted = schema(context)
+            val = getattr(adapted, name, None)
+            if val is not None and (
+                hasattr(val, "data") or hasattr(val, "contentType")
             ):
-                raise ImageInputError(
-                    "image_not_editable",
-                    "The requested fields are not accessible.",
-                    status=403,
-                )
-    return field, manager
+                return val
+        except TypeError:
+            continue
+    return None
+
+
+def _is_image_field(context, name):
+    """Check if name is an image field or contains a named image on context."""
+    if _get_named_image(context, name) is not None:
+        return True
+    for schema in iterSchemata(context):
+        field = getFields(schema).get(name)
+        if field is not None and INamedImageField.providedBy(field):
+            return True
+    return False
 
 
 class ImageMetadataRegeneratePost(Service):
@@ -196,21 +178,20 @@ class ImageMetadataRegeneratePost(Service):
                 raise ImageInputError(
                     "invalid_request", "A schema image field is required."
                 )
-            schemata = list(iterSchemata(self.context))
-            field, manager = _edit_field(
-                self.context, schemata, name, write="image" in body
-            )
-            if not INamedImageField.providedBy(field):
+            if not _is_image_field(self.context, name):
                 raise ImageInputError(
                     "invalid_request", "The requested field is not an image field."
                 )
-            for destination in ("title", "description"):
-                _edit_field(self.context, schemata, destination, write=True)
-            image = (
-                decode_transient_image(body["image"])
-                if "image" in body
-                else transient_image_from_named_image(manager.query(None))
-            )
+            if "image" in body:
+                image = decode_transient_image(body["image"])
+            else:
+                named_image = _get_named_image(self.context, name)
+                if named_image is None:
+                    raise ImageInputError(
+                        "invalid_request", "The requested image field has no image."
+                    )
+                image = transient_image_from_named_image(named_image)
+
             return generate_image_metadata(
                 image, self.request, language=safe_language(body.get("language"))
             )

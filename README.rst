@@ -60,16 +60,14 @@ It creates no content, blob, catalog record, or temporary file.
 requires Modify permission on the Image. It analyses verified Image bytes and
 metadata and returns plain ``alt`` text without changing the Image.
 
-``@image-metadata-regenerate`` requires View and Modify permissions on the
-existing object. It accepts ``field`` (the schema image field's name) and an
-optional ``language``. With no ``image`` payload it reads the stored field;
-a supplied base64 ``image`` takes precedence and is validated as an unsaved
-replacement, never persisted. Download descriptors and URLs are not fetched.
-The field must be an unambiguous named-image schema field; behavior-backed
-fields are adapted through their data manager. Source read permissions and
-title/description read/write permissions are checked, as are source write
-permissions for replacement uploads. The endpoint returns plain ``title``
-and ``description`` suggestions through the same generation pipeline as Add.
+``@image-metadata-regenerate`` requires Modify permission on the existing object
+(guarded by ``cmf.ModifyPortalContent``). It accepts ``field`` (the schema image
+field's name) and an optional ``language``. With no ``image`` payload it reads the
+stored field; a supplied base64 ``image`` takes precedence and is validated as an
+unsaved replacement, never persisted. Download descriptors and URLs are not fetched.
+The field must be a named-image schema field on the object or one of its behaviors.
+The endpoint returns plain ``title`` and ``description`` suggestions through the
+same generation pipeline as Add without mutating the object.
 
 The form widget supports both Add and Edit for the explicitly registered
 ``image`` and ``preview_image`` fields. On Edit it uses the loaded object's
