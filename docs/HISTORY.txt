@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1 - (2026-10-29)
+2.1 - (2026-10-29)
 ---------------------------
 * Feature: contribute Image AI settings to the shared GenAI controlpanel:
   disabled by default, shared title/alt maximum of 64 characters, and
@@ -14,7 +14,7 @@ Changelog
   [razvanMiu refs #305021]
 * Upgrade: profile 1.0 to 2.0 installs the Image AI registry records only,
   preserving existing settings without purging records or importing dependencies.
-  No core upgrade or legacy Image behavior cleanup is included. 
+  No core upgrade or legacy Image behavior cleanup is included.
   [razvanMiu refs #305021]
 * Feature: add stateless ``@image-metadata`` and ``@image-alt`` services.
   The first analyses unpersisted upload bytes and returns validated title and
