@@ -16,4 +16,28 @@
         permission="eea.genai.manage"
     />
 
+    <plone:service
+        method="POST"
+        for="Products.CMFCore.interfaces.IFolderish"
+        factory=".image.ImageMetadataPost"
+        name="@image-metadata"
+        permission="cmf.AddPortalContent"
+    />
+
+    <plone:service
+        method="POST"
+        for="plone.dexterity.interfaces.IDexterityContent"
+        factory=".image.ImageMetadataRegeneratePost"
+        name="@image-metadata-regenerate"
+        permission="cmf.ModifyPortalContent"
+    />
+
+    <plone:service
+        method="POST"
+        for="plone.app.contenttypes.interfaces.IImage"
+        factory=".image.ImageAltPost"
+        name="@image-alt"
+        permission="cmf.ModifyPortalContent"
+    />
+
 </configure>

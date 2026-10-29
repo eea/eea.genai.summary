@@ -8,6 +8,7 @@
     <include package="eea.genai.core" file="meta.zcml" />
 
     <include file="profiles.zcml" />
+    <include package=".upgrades" />
 
     <include package=".restapi" />
 
@@ -24,6 +25,12 @@
         handler=".subscribers.on_content_modified"
     />
 
+    <utility
+        name="image"
+        factory=".settings.ImageAISettingsSection"
+        provides="eea.genai.core.interfaces.IGenAISettingsSection"
+    />
+
     <!-- Agent context providers -->
 
     <genai:agentContextProvider
@@ -36,10 +43,27 @@
         class=".context_providers.GenericMetadataNoDatesProvider"
     />
 
+    <!-- Multimodal: attaches the image bytes of Image content to the prompt -->
+    <genai:agentContextProvider
+        name="image_content"
+        class=".image.ImageContentProvider"
+    />
+
     <!-- Default summarizer agent -->
     <genai:agent
         name="summarizer"
         class=".agents.SummarizerAgent"
+    />
+
+    <!-- Stateless Image APIs use dedicated structured-output agents. -->
+    <genai:agent
+        name="image_metadata"
+        class=".agents.ImageMetadataAgent"
+    />
+
+    <genai:agent
+        name="image_alt"
+        class=".agents.ImageAltAgent"
     />
 
 </configure>

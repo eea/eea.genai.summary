@@ -1,6 +1,50 @@
 Changelog
 =========
 
+2.1 - (2026-10-29)
+---------------------------
+* Feature: contribute Image AI settings to the shared GenAI controlpanel:
+  disabled by default, shared title/alt maximum of 64 characters, and
+  description maximum of 500 characters. Both global and Image switches
+  must permit generation.
+  [razvanMiu refs #305021]
+* Feature: apply configured character limits to Image generation prompts
+  and validated responses; retry oversized output once, then fail without
+  truncation.
+  [razvanMiu refs #305021]
+* Upgrade: profile 1.0 to 2.0 installs the Image AI registry records only,
+  preserving existing settings without purging records or importing dependencies.
+  No core upgrade or legacy Image behavior cleanup is included.
+  [razvanMiu refs #305021]
+* Feature: add stateless ``@image-metadata`` and ``@image-alt`` services.
+  The first analyses unpersisted upload bytes and returns validated title and
+  description before ordinary Image creation; the second returns a validated,
+  non-persisting alt suggestion for an existing Image.
+  [razvanMiu refs #305021]
+* Security: transient image analysis validates base64, media type, decoded
+  size, dimensions, total pixels, MIME/content agreement, and Pillow
+  decompression-bomb signals before model invocation. Invalid transient input
+  fails closed and unverified original bytes are never sent to the provider.
+  [razvanMiu refs #305021]
+* Feature: dedicated structured-output ``image_metadata`` and ``image_alt``
+  agents return plain marker-free values with bounded lengths and controlled
+  output language.
+  [razvanMiu refs #305021]
+* Change: remove the undeployed Image creation subscriber, Image-specific
+  ``llm_summary`` agent coupling, and ``llm_summary`` portal-catalog metadata
+  column. Generic behavior-driven summaries remain unchanged for content that
+  explicitly provides ``ILLMSummary``.
+  [razvanMiu refs #305021]
+* Fix: ``@llm-summary-batch`` commits each object individually, validates
+  limit/offset, reports detailed status/counts, and isolates per-object
+  failures.
+  [razvanMiu refs #305021]
+* Fix: ``@llm-summary`` and ``@llm-summary-batch`` requests are exempt from
+  plone.protect CSRF checks in line with plone.restapi content services.
+* Add a handler-only uninstall profile so the add-on can be uninstalled without
+  a missing-profile warning.
+  [razvanMiu refs #305021]
+
 1.0 - (2026-05-21)
 ---------------------------
 * Initial release

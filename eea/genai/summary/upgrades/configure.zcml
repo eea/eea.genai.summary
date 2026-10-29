@@ -1,0 +1,24 @@
+<configure
+  xmlns="http://namespaces.zope.org/zope"
+  xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+  i18n_domain="eea">
+
+  <genericsetup:upgradeStep
+    title="Install Image AI settings"
+    description="Add the Image AI registry records without resetting existing settings."
+    source="1.0"
+    destination="2.0"
+    profile="eea.genai.summary:default"
+    handler=".install_image_ai_settings"
+  />
+
+  <genericsetup:upgradeStep
+    title="Add Image AI allowed content types setting"
+    description="Add the Image AI content type allow list registry record without resetting existing settings."
+    source="2.0"
+    destination="2.1"
+    profile="eea.genai.summary:default"
+    handler=".install_image_ai_settings"
+  />
+
+</configure>
