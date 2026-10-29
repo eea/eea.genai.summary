@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1-dev0 - (unreleased)
+1.1 - (2026-10-29)
 ---------------------------
 * Feature: contribute Image AI settings to the shared GenAI controlpanel:
   disabled by default, shared title/alt maximum of 64 characters, and
